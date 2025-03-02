@@ -629,8 +629,24 @@ export default schema;
 
 ### Autres modifications
 #### Filter
-Pour faire fonctionner le REGEX, il ma fallue ajouter 
-#### Populations
+Pour faire fonctionner le REGEX, il ma fallue ajouter la fonction fixFilter qui modifie ce qui est fournis dans la query *GraphQL*. Cette fonction se trouve dans [filter.js](./src/core/filter.js)
+```js
+export const fixFilter = (filter) => {
+    if (filter._operators) {
+        const operatorKeys = Object.keys(filter._operators);
+        operatorKeys.forEach((key) => {
+            const operator = filter._operators[key];
+            if (operator.regex) {
+                filter[key] = { $regex: operator.regex, $options: 'i' };
+            }
+        });
+        delete filter._operators; 
+    }
+    return filter;
+}
+```
+#### Populate
+
 
 ### Utiles
 #### Fragments

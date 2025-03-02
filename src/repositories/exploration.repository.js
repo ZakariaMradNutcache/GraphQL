@@ -1,9 +1,13 @@
 import { Exploration } from '../models/exploration.model.js';
 import planetRepository from './planet.repository.js'
+import { fixFilter } from '../core/filter.js';
 
 class ExplorationsRepository {
 
     retrieveByCriteria(filter, options) {
+        filter = filter || {};
+        filter = fixFilter(filter);
+
         const retrieveQuery = Exploration
             .find(filter)
             .limit(options.limit)
