@@ -23,6 +23,7 @@ const explorationSchema = mongoose.Schema(
       {
         element: { type: String, description: 'Element scanned' },
         percent: { type: Number, description: 'Percentage of the element scanned' },
+        hapiness: { type: Number, description: 'Hapiness of the element scanned' },
         _id: false,
       },
     ],
@@ -38,6 +39,7 @@ const explorationSchema = mongoose.Schema(
 
 const explorationsModel = mongoose.model('Exploration', explorationSchema);
 const ExplorationTC = composeWithMongoose(explorationsModel, {});
+removeFields(ExplorationTC, ['_id', '__v', 'createAt', 'updatedAt', 'scans.hapiness']);
 ExplorationTC.addFields({
   planet: {
     type: PlanetTC,
@@ -45,12 +47,11 @@ ExplorationTC.addFields({
     resolve: (source) => source.planet,
     projection: { planet: 1 }
   },
-  //We add the href, but if the api is GraphQL, we should not use it
   href: {
     type: 'String',
     description: 'URL of the exploration (as the api is GraphQL, we should not use it)',
     resolve: (source) => `${process.env.BASE_URL}/explorations/${source.uuid}`
   }
-}).removeField('_id').removeField('__v').removeField('createdAt').removeField('updatedAt').removeField('planet');
+});
 
 export { ExplorationTC, explorationsModel as Exploration };

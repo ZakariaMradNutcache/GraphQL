@@ -3,9 +3,12 @@ import PlanetTC from './types/planet.type.js';
 import ExplorationTC from './types/exploration.type.js';
 
 const composer = new SchemaComposer();
+
 composer.Query.addFields({
     planets: PlanetTC.getResolver('findAll'),
+    planetsPaginated: PlanetTC.getResolver('findAllPaginated'),
     explorations: ExplorationTC.getResolver('findAll'),
+    explorationsPaginated: ExplorationTC.getResolver('findAllPaginated'),
 });
 
 composer.Mutation.addFields({

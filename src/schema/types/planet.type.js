@@ -3,6 +3,7 @@ import { PlanetTC } from '../../models/planet.model.js';
 import { ExplorationTC } from '../../models/exploration.model.js';
 import planetRepository from '../../repositories/planet.repository.js';
 import { removeFields } from '../../core/removeFields.js';
+import { schemaComposer } from 'graphql-compose';
 
 
 
@@ -22,6 +23,7 @@ PlanetTC.addResolver({
     type: [FindAllPlanetTC.getType()],
     resolve: async ({ args }) => {
         const filter = args.filter || {};
+        
         const options = {
             limit: args.limit,
             skip: args.skip,
@@ -30,6 +32,50 @@ PlanetTC.addResolver({
         };
         const [explorations, _] = await planetRepository.retrieveByCriteria(filter, options);
         return explorations;
+    }
+});
+
+PlanetTC.addResolver({
+    name: 'findAllPaginated',
+    description: 'Retrieve all planets, with optional pagination',
+    args: {
+        ...PlanetTC.getResolver('findMany').getArgs(),
+        page: 'Int!',
+        limit: 'Int!',
+    },
+    type: schemaComposer.createObjectTC({
+        name: 'PlanetPaginationPayload',
+        fields: {
+            data: '[FindAllPlanetTC!]!',
+            count: 'Int!',
+            totalPages: 'Int!',
+            currentPage: 'Int!',
+        },
+    }),
+    resolve: async ({ args }) => {
+        const filter = args.filter || {};
+        if (args.page < 1) throw new Error('Page must be greater than 0');
+
+        if (args.limit > 15) args.limit = 15;
+
+        const skip = (args.page - 1) * args.limit;
+
+        const options = {
+            limit: args.limit,
+            skip,
+            sort: args.sort,
+            planet: args.planet
+        };
+
+        // Fetch both paginated data and total count
+        const [planets, totalCount] = await planetRepository.retrieveByCriteria(filter, options);
+
+        return {
+            data: planets,
+            count: totalCount,
+            totalPages: Math.ceil(totalCount / args.limit),
+            currentPage: args.page,
+        };
     }
 });
 

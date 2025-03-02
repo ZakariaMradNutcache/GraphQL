@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import { composeWithMongoose } from 'graphql-compose-mongoose';
 import { v4 as uuidv4 } from 'uuid';
 import { removeFields } from '../core/removeFields.js';
+import dayjs from 'dayjs';
 
 const planetSchema = mongoose.Schema({
     name: { type: String, unique: true, required: true, description: 'Name of the planet' },
@@ -38,6 +39,11 @@ PlanetTC.addFields({
         resolve: (source) => `${process.env.BASE_URL}/planets/${source.uuid}`,
         description: 'URL of the planet'
     },
+    lightspeed: {
+        type: 'String',
+        resolve: (source) => `${source.position.x.toString(16)}@${source.position.y.toString(16)}#${source.position.z.toString(16)}`,
+        description: 'Lightspeed coordinates of the planet'
+    },
     discoveryDate: {
         type: 'Date',
         resolve: (source) => {
@@ -45,17 +51,12 @@ PlanetTC.addFields({
                 return null;
             }
             try {
-                return new Date(source.discoveryDate);
+                return dayjs(source.discoveryDate).format('YYYY-MM-DD');
             } catch (error) {
                 return null;
             }
         },
         description: 'Date when the planet was discovered'
-    },
-    lightspeed: {
-        type: 'String',
-        resolve: (source) => `${source.position.x.toString(16)}@${source.position.y.toString(16)}#${source.position.z.toString(16)}`,
-        description: 'Lightspeed coordinates of the planet'
     }
 })
 
