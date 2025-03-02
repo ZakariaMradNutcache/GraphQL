@@ -3,6 +3,7 @@ import explorationRepository from '../../repositories/exploration.repository.js'
 import { removeFields } from '../../core/removeFields.js';
 import { schemaComposer } from 'graphql-compose';
 import pageInfoTC from '../../core/pageInfoTC.js';
+import { PageInfo } from '../../core/pageInfo.js';
 
 
 ExplorationTC.addResolver({
@@ -56,15 +57,11 @@ ExplorationTC.addResolver({
         const [explorations, totalCount] = await explorationRepository.retrieveByCriteria(filter, options);
 
         return {
-            data: explorations,
-            count: totalCount,
-            totalPages: Math.ceil(totalCount / args.limit),
-            currentPage: args.page,
+            explorations: explorations,
+            pageInfo: new PageInfo({ totalCount, limit: args.limit, page: args.page })
         };
     }
 });
-
-
 
 const CreateOneExplorationTC = ExplorationTC.clone('CreateOneExplorationTC');
 removeFields(CreateOneExplorationTC, ['uuid', 'href', 'planet']);

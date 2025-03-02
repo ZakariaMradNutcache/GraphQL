@@ -293,20 +293,28 @@ avec ce *JSON* en variable
 ### Pagination
 #### Explorations
 ```graphql
-query ExplorationsPaginated($limit: Int!, $page: Int!) {
-    explorationsPaginated(limit: $limit, page: $page) {
-        count # Le nombre total d'item qui peuvent être retournée
-        totalPages # Le nombre total de page
-        currentPage # Le numéro de la page [1 - totalPages]
-        data { # Les explorations sont dans le champs "data"
-            explorationDate
+query PlanetsPaginated($limit: Int!, $page: Int!) {
+    planetsPaginated(limit: $limit, page: $page) {
+        pageInfo {
+            currentPage
+            hasPreviousPage
+            hasNextPage
+            nextPage
+            previousPage
+        }
+        planets {
+            name
             uuid
-            comment
+            discoveredBy
+            discoveryDate
+            temperature
+            satellites
             href
-            planet {...}
+            lightspeed
         }
     }
 }
+
 ```
 avec le JSON
 ```json
@@ -317,31 +325,28 @@ avec le JSON
 ```
 #### Planets
 ```graphql
-query PlanetsPaginated($limit: Int!, $page: Int!) {
-    planetsPaginated(limit: $limit, page: $page) {
-        count
-        totalPages
-        currentPage
-        data { # Les planètes sont dans le champs "data"
-            name
+query ExplorationsPaginated($limit: Int!, $page: Int!) {
+    explorationsPaginated(limit: $limit, page: $page) {
+        explorations {
+            explorationDate
             uuid
-            discoveredBy
-            discoveryDate
-            temperature
-            satellites
+            comment
             href
-            lightspeed
-            explorations {...}
-            position {...}
+        }
+        pageInfo {
+            currentPage
+            hasPreviousPage
+            hasNextPage
+            nextPage
+            previousPage
         }
     }
 }
-
 ```
 avec le JSON
 ```json
 {
-    "page":12,
+    "page":1,
     "limit":11
 }
 ```
@@ -536,6 +541,16 @@ CreateOneExplorationTC.addFields({
     }
 });
 ```
+Il est aussi parfois requis de faire un *OTC* *from scratch*, telle que dans les paginations, pour qu'on puisse accéder au data et aux propriétés de la pagianations facilement.
+```js
+const PaginatedFindAllExplorationTC = schemaComposer.createObjectTC({
+    name: 'ExplorationPaginationPayload',
+    fields: {
+        explorations: [ExplorationTC],
+        pageInfo: pageInfoTC, //pageInfoTC est aussi un OTC créer from scratch
+    },
+});
+```
 #### Création du *Resolver*
 Pour créer le *resolver* il faut lui donner un nom, un description,un type de retour, des arguments, dans ce cas, un *OTC* et un *resolve*. Le *resolve* est la fonction appeler par le serveur *GraphQL*. Elle doit donc retourner du *JSON* correspondant au type donnée. Par exemple [exploration.type.js](./src/schema/types/exploration.type.js#L79)
 ```js
@@ -558,7 +573,6 @@ ExplorationTC.addResolver({
 ```
 Certains resolver sont plus complexes, telles que celui de la pagination
 ```js
-
 ExplorationTC.addResolver({
     name: 'findAllPaginated',
     description: 'Retrieve all explorations, can be paginated using limit and skip',
@@ -567,15 +581,7 @@ ExplorationTC.addResolver({
         page: 'Int!',
         limit: 'Int!',
     },
-    type: schemaComposer.createObjectTC({
-        name: 'ExplorationPaginationPayload',
-        fields: {
-            data: '[Exploration!]!',
-            count: 'Int!',
-            totalPages: 'Int!',
-            currentPage: 'Int!',
-        },
-    }),
+    type: PaginatedFindAllExplorationTC,
     resolve: async ({ args }) => {
         const filter = args.filter || {};
         if (args.page < 1) throw new Error('Page must be greater than 0');
@@ -592,19 +598,38 @@ ExplorationTC.addResolver({
         const [explorations, totalCount] = await explorationRepository.retrieveByCriteria(filter, options);
 
         return {
-            data: explorations,
-            count: totalCount,
-            totalPages: Math.ceil(totalCount / args.limit),
-            currentPage: args.page,
+            explorations: explorations,
+            pageInfo: new PageInfo({ totalCount, limit: args.limit, page: args.page })
         };
     }
 });
 ```
 ### Complétion du schéma GraphQL
+Pour finir, il faut complété le schéma *GraphQL*. Il faut donc créer le fichier [`schema/composer.js`](./src/schema/composer.js) et y ajouter les *Queries* et les *Mutations*. C'est ce schéma qui est utiliser dans le serveur *GraphQL* ` const server = new ApolloServer({schema,});`
+```js
+const composer = new SchemaComposer();
+
+composer.Query.addFields({
+    planets: PlanetTC.getResolver('findAll'),
+    planetsPaginated: PlanetTC.getResolver('findAllPaginated'),
+    explorations: ExplorationTC.getResolver('findAll'),
+    explorationsPaginated: ExplorationTC.getResolver('findAllPaginated'),
+});
+
+composer.Mutation.addFields({
+    createExploration: ExplorationTC.getResolver('createOne'),
+    createPlanet: PlanetTC.getResolver('createOne'),
+    updatePlanet: PlanetTC.getResolver('updateOne'),
+    deletePlanet: PlanetTC.getResolver('deleteOne'),
+});
+const schema = composer.buildSchema();
+export default schema;
+```
 
 
 ### Autres modifications
 #### Filter
+Pour faire fonctionner le REGEX, il ma fallue ajouter 
 #### Populations
 
 ### Utiles

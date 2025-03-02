@@ -4,6 +4,8 @@ import { ExplorationTC } from '../../models/exploration.model.js';
 import planetRepository from '../../repositories/planet.repository.js';
 import { removeFields } from '../../core/removeFields.js';
 import { schemaComposer } from 'graphql-compose';
+import { PageInfo } from '../../core/pageInfo.js';
+import pageInfoTC from '../../core/pageInfoTC.js';
 
 
 
@@ -30,9 +32,17 @@ PlanetTC.addResolver({
             sort: args.sort,
             planet: args.planet
         };
-        const [explorations, _] = await planetRepository.retrieveByCriteria(filter, options);
-        return explorations;
+        const [planets, _] = await planetRepository.retrieveByCriteria(filter, options);
+        return planets;
     }
+});
+
+const PaginatedFindAllPlanetTC = schemaComposer.createObjectTC({
+    name: 'PlanetPaginationPayload',
+    fields: {
+        planets: [PlanetTC],
+        pageInfo: pageInfoTC,
+    },
 });
 
 PlanetTC.addResolver({
@@ -43,15 +53,7 @@ PlanetTC.addResolver({
         page: 'Int!',
         limit: 'Int!',
     },
-    type: schemaComposer.createObjectTC({
-        name: 'PlanetPaginationPayload',
-        fields: {
-            data: '[FindAllPlanetTC!]!',
-            count: 'Int!',
-            totalPages: 'Int!',
-            currentPage: 'Int!',
-        },
-    }),
+    type: PaginatedFindAllPlanetTC,
     resolve: async ({ args }) => {
         const filter = args.filter || {};
         if (args.page < 1) throw new Error('Page must be greater than 0');
@@ -71,10 +73,8 @@ PlanetTC.addResolver({
         const [planets, totalCount] = await planetRepository.retrieveByCriteria(filter, options);
 
         return {
-            data: planets,
-            count: totalCount,
-            totalPages: Math.ceil(totalCount / args.limit),
-            currentPage: args.page,
+            planets: planets,
+            pageInfo: new PageInfo({ totalCount, limit: args.limit, page: args.page })
         };
     }
 });
