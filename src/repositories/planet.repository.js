@@ -38,6 +38,14 @@ class PlanetRepository {
     const planet = await Planet.findOne({ uuid });
     return planet ? planet._id : null;
   }
+
+  async retrieveByUUID(uuid) {
+    const planet = Planet.findOne({
+      uuid
+    }).populate('explorations', 'uuid');
+    planet.populate('explorations');
+    return planet;
+  }
 }
 
 export default new PlanetRepository();
