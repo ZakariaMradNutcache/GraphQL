@@ -291,7 +291,7 @@ avec ce *JSON* en variable
 
 ## Requetes plus poussés
 ### Pagination
-#### Explorations
+#### Planets
 ```graphql
 query PlanetsPaginated($limit: Int!, $page: Int!) {
     planetsPaginated(limit: $limit, page: $page) {
@@ -323,7 +323,7 @@ avec le JSON
     "limit":11
 }
 ```
-#### Planets
+#### Explorations
 ```graphql
 query ExplorationsPaginated($limit: Int!, $page: Int!) {
     explorationsPaginated(limit: $limit, page: $page) {
@@ -381,7 +381,7 @@ query Planets($limit: Int) {
 avec le JSON
 ```json
 {
-    "limit": 5
+    "limit": 5 //Seulement 5 planets seront données
 }
 ```
 
@@ -411,16 +411,14 @@ query Planets(
         lightspeed
     }
 }
-
 ```
 avec le JSON
 ```json
 {
-    "discoveryDate": "2017-12-03T00:00:00.000Z", // Donc nous selectionnons tous les planets ayant une température de 280 K et etant decouvert le 2017-12-03
-    "temperature": 280
+    "discoveryDate": "2017-12-03T00:00:00.000Z", // Donc nous selectionnons tous les planets ayant une température de 280 K 
+    "temperature": 280 // et étant découverte le 2017-12-03
 }
 ```
-#### Recherche
 #### Recherche
 Il est possible de faire la recherche dans certain *fields* grâce è l'argumet *filter._operators*
 ```graphql
@@ -474,8 +472,8 @@ app.use('/', express.json(), expressMiddleware(server));
 #### Descriptions
 La première étapes est d'ajouter un descriptions aux *fields*, car la description sera visible via les clients. Par exemple [exploration.model.js](./src/models/exploration.model.js#L10):
 ```js
-    explorationDate: { type: Date, default: Date.now, required: true, description: 'Date of the exploration' }, // Ajout de la description
-    uuid: { type: String, unique: true, required: true, default: () => uuidv4(), description: 'UUID of the exploration' },
+explorationDate: { type: Date, default: Date.now, required: true, description: 'Date of the exploration' }, // Ajout de la description
+uuid: { type: String, unique: true, required: true, default: () => uuidv4(), description: 'UUID of the exploration' },
 ```
 #### OTCs
 La deuxième étape est de créer le OTCs (ObjectTypeComposer) à partir du model, qu'il faut donc créer plus tôt. Par exemple [exploration.model.js](./src/models/exploration.model.js#L40):
@@ -646,7 +644,57 @@ export const fixFilter = (filter) => {
 }
 ```
 #### Populate
-
+Mes connaissances sur Mongoose étant pauvres, je n'ai jamais réussi à *populate* un objet après sa création, je retourne donc l'objet trouvé grâce à son *UUID* après avoir créer une exploration. 
+```js
+resolve: async ({ args }) => {
+    const explorationData = args.createOneExplorationInput;
+    const newExploration = await explorationRepository.create(explorationData);
+    return explorationRepository.retrieveByUUID(newExploration.uuid);
+}
+```
 
 ### Utiles
 #### Fragments
+En *GraphQL*, il est utile de savoir utiliser des *Fragments*, qui sont des parties de requêtes, par exemple, si on veut souvent avoir une *planet*, on pour créer une *fragement*
+```js
+const planetFragment = gql`
+fragment planetFragment on Planet {
+    name
+    uuid
+    discoveredBy
+    discoveryDate
+    temperature
+    satellites
+    position {
+        x
+        y
+        z
+    }
+    href
+    lightspeed
+}
+`;
+```
+puis, l'ajouter avant un query: 
+```js
+const query = gql`
+${planetFragment}
+query {
+    planets {
+        ...planetFragment
+    }
+}
+`;
+```
+
+#### Renommage
+Dans une query, il est parfois utile de renommer des propriétés, surtout si elle sont vielles ou simplement mal nommés, pour ce faire, ils suffit d'écrire la propriété ainsi, où `unePlanetteCool` est le nouveux nom de `planet`
+```graphql
+query Explorations {
+    explorations {
+        unePlanetteCool:planet {
+            ...planetFragment
+        }
+    }
+}
+```
